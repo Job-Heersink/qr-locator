@@ -7,11 +7,8 @@ from werkzeug.utils import secure_filename
 
 S3_BUCKET = "location-finder-data-bucket"
 
-class DefaultInput(BaseModel):
-    command: str
 
-
-class LocationData(DefaultInput):
+class LocationData(BaseModel):
     lat: float
     lon: float
     name: str
@@ -42,6 +39,36 @@ def iterate_bucket_items():
 
 def handler(event, context):
     print(event)
+    try:
+        method = event['requestContext']['http']['method']
+        path = event['requestContext']['http']['path']
+        if method == 'GET' and path == '/ping':
+            return ping()
+        if method == 'GET' and path == '/':
+            with open('index.html', 'r') as f:
+                return {
+                    "statusCode": 200,
+                    "body": f.read(),
+                    "headers": {
+                        'Content-Type': 'text/html',
+                    }
+                }
+        if method == 'GET' and path == '/admin':
+            with open('admin.html', 'r') as f:
+                return {
+                    "statusCode": 200,
+                    "body": f.read(),
+                    "headers": {
+                        'Content-Type': 'text/html',
+                    }
+                }
+        elif method == 'POST' and path == '/location':
+            return store_location(LocationData.parse_raw(event.get('body')))
+        elif method == 'GET' and path == '/location':
+            return get_location()
+    except Exception as e:
+        print(e)
+        raise e
 
 
 def ping():

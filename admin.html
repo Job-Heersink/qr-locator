@@ -1,0 +1,71 @@
+ <!DOCTYPE html>
+<html>
+ <head>
+     <style>
+table, th, td {
+  border: 1px solid black;
+}
+</style>
+ </head>
+<body>
+<h1 id="header">Locaties</h1>
+ <table id="table">
+</table>
+
+
+</body>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+
+const backend_url = "https://6z456hpazwuzluajqn5kka7htu0ltqnf.lambda-url.eu-west-2.on.aws/location";
+
+var options = {
+    headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'content-type': 'application/json',
+        'Cache-Control': 'no-cache',
+        'cache-control': 'no-cache',
+        'Access-Control-Allow-Origin': '*',
+    }
+}
+
+var data = []
+
+function displayInTable(data_list) {
+  var new_table = "<thead><th>Latitude</th>" +
+      "<th>Lontitude</th>" +
+      "<th>name</th>" +
+      "<th>team</th>" +
+      "<th>browser_info</th>" +
+      "<th>time</th>" +
+      "</thead>";
+
+    for(d of data_list){
+        var google_maps_url = `https://www.google.com/maps/search/?api=1&query=${d.lat},${d.lon}`
+        new_table += "<tr>"
+        new_table += `<td><a href="${google_maps_url}">${d.lat}</a></td>`
+        new_table += `<td><a href="${google_maps_url}">${d.lon}</a></td>`
+        new_table += `<td>${d.name}</td>`
+        new_table += `<td>${d.team}</td>`
+        new_table += `<td>${d.browser_info}</td>`
+        new_table += `<td>${d.date}</td>`
+        new_table += "</tr>"
+    }
+
+  document.getElementById("table").innerHTML = new_table;
+}
+
+
+axios.get(backend_url, options)
+    .then(function (result) {
+        console.log("success");
+        console.log(result);
+        displayInTable(result.data);
+    })
+    .catch(function (errorCreate) {
+        console.error(errorCreate);
+        alert(errorCreate.response);
+    });
+</script>
+</html>
