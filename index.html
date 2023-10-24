@@ -1,0 +1,100 @@
+ <!DOCTYPE html>
+<html>
+<body>
+<h1 id="Message">Laden...</h1>
+<form method="post" id="form" accept-charset=utf-8>
+    <label>Naam:</label><input type="text" name="username" placeholder="Naam" id="username" required><br>
+    <label>Team:</label><input type="text" name="team" placeholder="Team" id="team" required><br>
+    <input type="submit" value="Submit" id="button">
+</form>
+
+
+</body>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+
+const backend_url = "https://6z456hpazwuzluajqn5kka7htu0ltqnf.lambda-url.eu-west-2.on.aws/";
+const parseCookie = (str) => str.split(';').map(v => v.split('=')).reduce((acc, v) => {
+  acc[decodeURIComponent(v[0].trim())] = decodeURIComponent(v[1].trim());
+  return acc;
+}, {});
+
+function setCookie(cname, cvalue, exdays) {
+  const d = new Date();
+  d.setTime(d.getTime() + (exdays*24*60*60*1000));
+  let expires = "expires="+ d.toUTCString();
+  document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/;SameSite=None;Secure";
+}
+
+
+async function determine_location() {
+    document.getElementById("form").style.visibility = "hidden";
+    var cookies = {};
+    try {
+        cookies = parseCookie(document.cookie);
+    } catch (e) {
+        console.log(e);
+    }
+
+    if ("username" in cookies && cookies.username !== "" && "team" in cookies && cookies.team !== "") {
+        document.getElementById("Message").innerHTML = `Welkom ${cookies.username} van team ${cookies.team}!`;
+        await new Promise(r => setTimeout(r, 500));
+    } else {
+        document.getElementById("form").style.visibility = "visible";
+        document.getElementById("Message").innerHTML = `Vul je naam en team in a.u.b.`;
+        return
+    }
+
+    document.getElementById("Message").innerHTML = "Klik a.u.b op 'allow to get your location'";
+    if (navigator.geolocation) { // device can return its location
+        navigator.geolocation.getCurrentPosition(function (position) {
+                document.getElementById("Message").innerHTML = "We weten waar je bent!";
+
+                var options = {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'content-type': 'application/json',
+                        'Cache-Control': 'no-cache',
+                        'cache-control': 'no-cache',
+                        'Access-Control-Allow-Origin': '*',
+                    }
+                }
+
+                var data = {
+                    "name": cookies.username,
+                    "team": cookies.team,
+                    "lat": position.coords.latitude,
+                    "lon": position.coords.longitude,
+                    "browser_info": window.navigator.userAgent
+                }
+                console.log(data);
+                axios.post(backend_url, data, options)
+                    .then(function (resultCreate) {
+                        console.log("success");
+                        console.log(resultCreate);
+                    })
+                    .catch(function (errorCreate) {
+                        console.error(errorCreate);
+                        alert(errorCreate.response);
+                    });
+            },
+            (error) => {
+                document.getElementById("Message").innerHTML = "We kunnen je locatie niet bepalen. Probeer het later nog eens.";
+            });
+    } else {
+        document.getElementById("Message").innerHTML = "We kunnen je locatie niet bepalen. Probeer het met een ander apparaat.";
+    }
+}
+
+document.getElementById("button").addEventListener("click", function (event) {
+    console.log("button clicked")
+    event.preventDefault();
+    setCookie('username', document.getElementById("username").value, 3)
+    setCookie('team', document.getElementById("team").value, 3)
+    determine_location();
+});
+
+determine_location();
+</script>
+</html>
