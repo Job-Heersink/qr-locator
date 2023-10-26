@@ -2,16 +2,46 @@
 <html>
  <head>
      <style>
-table, th, td {
-  border: 1px solid black;
-}
-</style>
+        table, th, td {
+          border: 1px solid black;
+        }
+        img {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            width: 20%;
+        }
+        h1, form {
+            text-align: center;
+            color: white;
+            font-size: 5em;
+        }
+        table {
+            color: white;
+            font-size: 1.5em;
+        }
+        input {
+            font-size: 0.5em;
+            width: 25%;
+        }
+        body {
+            background-color: #0C2450;
+        }
+        a:link {
+            color: #E65A31;
+        }
+        a:visited, a:hover, a:active {
+            color: #a94325;
+        }
+    </style>
  </head>
 <body>
+<img src="https://6z456hpazwuzluajqn5kka7htu0ltqnf.lambda-url.eu-west-2.on.aws/resources/Stam_V3.svg" alt="logo">
 <h1 id="header">Locaties</h1>
+<div>
  <table id="table">
 </table>
-
+</div>
 
 </body>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
@@ -33,21 +63,25 @@ var options = {
 var data = []
 
 function displayInTable(data_list) {
-  var new_table = "<thead><th>Latitude</th>" +
-      "<th>Lontitude</th>" +
-      "<th>name</th>" +
-      "<th>team</th>" +
-      "<th>browser_info</th>" +
-      "<th>time</th>" +
+  var new_table = "<thead><th>Locatie</th>" +
+      "<th>Naam</th>" +
+      "<th>Team</th>" +
+      "<th>Post</th>" +
+      "<th>Info</th>" +
+      "<th>Tijd</th>" +
       "</thead>";
 
     for(d of data_list){
         var google_maps_url = `https://www.google.com/maps/search/?api=1&query=${d.lat},${d.lon}`
+        var post = d.qr_id
+        if (typeof post === 'undefined' || post === 'null'){
+            post = "?"
+        }
         new_table += "<tr>"
-        new_table += `<td><a href="${google_maps_url}">${d.lat}</a></td>`
-        new_table += `<td><a href="${google_maps_url}">${d.lon}</a></td>`
+        new_table += `<td><a href="${google_maps_url}">${d.lat}; ${d.lon}</a></td>`
         new_table += `<td>${d.name}</td>`
         new_table += `<td>${d.team}</td>`
+        new_table += `<td>${post}</td>`
         new_table += `<td>${d.browser_info}</td>`
         new_table += `<td>${d.date}</td>`
         new_table += "</tr>"
@@ -65,7 +99,7 @@ axios.get(backend_url, options)
     })
     .catch(function (errorCreate) {
         console.error(errorCreate);
-        alert(errorCreate.response);
+        alert("oepsie");
     });
 </script>
 </html>

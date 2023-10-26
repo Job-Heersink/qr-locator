@@ -1,5 +1,8 @@
+import base64
 import json
+import os.path
 from datetime import datetime
+from typing import Optional
 
 import boto3
 from pydantic import BaseModel
@@ -15,6 +18,7 @@ class LocationData(BaseModel):
     team: str
     browser_info: str
     date: datetime = datetime.now()
+    qr_id: Optional[str] = None
 
 
 def iterate_bucket_items():
@@ -37,35 +41,63 @@ def iterate_bucket_items():
                 yield item['Key']
 
 
+def get_html(file):
+    with open(file, 'r') as f:
+        return {
+            "statusCode": 200,
+            "body": f.read(),
+            "headers": {
+                'Content-Type': 'text/html',
+            }
+        }
+
+
+def get_image(file, image_type='png'):
+    with open(file, 'rb') as f:
+        return {
+            "statusCode": 200,
+            "body": base64.b64encode(f.read()),
+            "isBase64Encoded": True,
+            "headers": {
+                'Content-Type': f'image/{image_type}',
+            }
+        }
+
+def response_404():
+    return {
+        "statusCode": 404,
+        "body": "Not found"
+    }
+
+
 def handler(event, context):
-    print(event)
     try:
         method = event['requestContext']['http']['method']
         path = event['requestContext']['http']['path']
+        print(f"method: {method}, path: {path}")
         if method == 'GET' and path == '/ping':
             return ping()
-        if method == 'GET' and path == '/':
-            with open('index.html', 'r') as f:
-                return {
-                    "statusCode": 200,
-                    "body": f.read(),
-                    "headers": {
-                        'Content-Type': 'text/html',
-                    }
-                }
-        if method == 'GET' and path == '/admin':
-            with open('admin.html', 'r') as f:
-                return {
-                    "statusCode": 200,
-                    "body": f.read(),
-                    "headers": {
-                        'Content-Type': 'text/html',
-                    }
-                }
         elif method == 'POST' and path == '/location':
             return store_location(LocationData.parse_raw(event.get('body')))
         elif method == 'GET' and path == '/location':
             return get_location()
+        if method == 'GET' and path == '/':
+            return get_html('index.html')
+        if method == 'GET' and path == '/admin':
+            return get_html('admin.html')
+        elif method == 'GET' and path.startswith('/resources/'):
+            if not os.path.isfile(path[1:]):
+                return response_404()
+            if path.endswith('.png'):
+                return get_image(path[1:], 'png')
+            elif path.endswith('.jpg') or path.endswith('.jpeg'):
+                return get_image(path[1:], 'jpg')
+            elif path.endswith('.svg'):
+                return get_image(path[1:], 'svg+xml')
+            else:
+                return response_404()
+        else:
+            return response_404()
     except Exception as e:
         print(e)
         raise e
@@ -90,5 +122,7 @@ def get_location():
     for item in iterate_bucket_items():
         obj = client.get_object(Bucket=S3_BUCKET, Key=item)
         data.append(json.loads(obj['Body'].read()))
+
+    data.sort(key=lambda x: x['date'], reverse=True)
 
     return data

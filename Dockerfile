@@ -7,5 +7,6 @@ RUN pip install -r requirements.txt
 COPY backend.py ${LAMBDA_TASK_ROOT}
 COPY index.html ${LAMBDA_TASK_ROOT}
 COPY admin.html ${LAMBDA_TASK_ROOT}
+COPY resources ${LAMBDA_TASK_ROOT}/resources
 
 CMD [ "backend.handler" ]

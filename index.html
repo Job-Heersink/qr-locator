@@ -1,12 +1,35 @@
  <!DOCTYPE html>
 <html>
+    <head>
+        <style>
+            img {
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+                width: 20%;
+            }
+            h1, form {
+                text-align: center;
+                color: white;
+                font-size: 5em;
+            }
+            input {
+                font-size: 0.5em;
+                width: 25%;
+            }
+            body {
+                background-color: #0C2450;
+            }
+        </style>
+    </head>
 <body>
-<h1 id="Message">Laden...</h1>
-<form method="post" id="form" accept-charset=utf-8>
-    <label>Naam:</label><input type="text" name="username" placeholder="Naam" id="username" required><br>
-    <label>Team:</label><input type="text" name="team" placeholder="Team" id="team" required><br>
-    <input type="submit" value="Submit" id="button">
-</form>
+    <img src="https://6z456hpazwuzluajqn5kka7htu0ltqnf.lambda-url.eu-west-2.on.aws/resources/Stam_V3.svg" alt="logo">
+    <h1 id="Message">Laden...</h1>
+    <form method="post" id="form" accept-charset=utf-8>
+        <label>Naam: </label><input type="text" name="username" placeholder="Naam" id="username" required><br>
+        <label>Team: </label><input type="text" name="team" placeholder="Team" id="team" required><br>
+        <input type="submit" value="Submit" id="button">
+    </form>
 
 
 </body>
@@ -14,6 +37,10 @@
 <script>
 
 const backend_url = "https://6z456hpazwuzluajqn5kka7htu0ltqnf.lambda-url.eu-west-2.on.aws/location";
+const params = new Proxy(new URLSearchParams(window.location.search), {
+  get: (searchParams, prop) => searchParams.get(prop),
+});
+
 const parseCookie = (str) => str.split(';').map(v => v.split('=')).reduce((acc, v) => {
   acc[decodeURIComponent(v[0].trim())] = decodeURIComponent(v[1].trim());
   return acc;
@@ -66,7 +93,8 @@ async function determine_location() {
                     "team": cookies.team,
                     "lat": position.coords.latitude,
                     "lon": position.coords.longitude,
-                    "browser_info": window.navigator.userAgent
+                    "browser_info": window.navigator.userAgent,
+                    "qr_id": params.qr_id
                 }
                 console.log(data);
                 axios.post(backend_url, data, options)
