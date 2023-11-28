@@ -17,8 +17,14 @@
             font-size: 5em;
         }
         table {
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
             color: white;
             font-size: 1.5em;
+        }
+        td {
+            padding: 6px;
         }
         input {
             font-size: 0.5em;
@@ -33,11 +39,103 @@
         a:visited, a:hover, a:active {
             color: #a94325;
         }
+
+        .dot-elastic {
+          margin-left: auto;
+          margin-right: auto;
+          width: 10px;
+          height: 10px;
+          border-radius: 5px;
+          background-color: #9880ff;
+          color: #9880ff;
+          animation: dot-elastic 1s infinite linear;
+        }
+        .dot-elastic::before, .dot-elastic::after {
+          content: "";
+          display: inline-block;
+          position: absolute;
+          top: 0;
+        }
+        .dot-elastic::before {
+          left: -15px;
+          width: 10px;
+          height: 10px;
+          border-radius: 5px;
+          background-color: #9880ff;
+          color: #9880ff;
+          animation: dot-elastic-before 1s infinite linear;
+        }
+        .dot-elastic::after {
+          left: 15px;
+          width: 10px;
+          height: 10px;
+          border-radius: 5px;
+          background-color: #9880ff;
+          color: #9880ff;
+          animation: dot-elastic-after 1s infinite linear;
+        }
+
+        @keyframes dot-elastic-before {
+          0% {
+            transform: scale(1, 1);
+          }
+          25% {
+            transform: scale(1, 1.5);
+          }
+          50% {
+            transform: scale(1, 0.67);
+          }
+          75% {
+            transform: scale(1, 1);
+          }
+          100% {
+            transform: scale(1, 1);
+          }
+        }
+        @keyframes dot-elastic {
+          0% {
+            transform: scale(1, 1);
+          }
+          25% {
+            transform: scale(1, 1);
+          }
+          50% {
+            transform: scale(1, 1.5);
+          }
+          75% {
+            transform: scale(1, 1);
+          }
+          100% {
+            transform: scale(1, 1);
+          }
+        }
+        @keyframes dot-elastic-after {
+          0% {
+            transform: scale(1, 1);
+          }
+          25% {
+            transform: scale(1, 1);
+          }
+          50% {
+            transform: scale(1, 0.67);
+          }
+          75% {
+            transform: scale(1, 1.5);
+          }
+          100% {
+            transform: scale(1, 1);
+          }
+        }
     </style>
  </head>
 <body>
 <img src="https://6z456hpazwuzluajqn5kka7htu0ltqnf.lambda-url.eu-west-2.on.aws/resources/Stam_V3.svg" alt="logo">
 <h1 id="header">Locaties</h1>
+<div id="loading" class="dot-elastic"></div>
+<form id="login-form" accept-charset=utf-8>
+    <label for="password_field">Wachtwoord: </label><input type="text" id="password_field">
+    <input type="button" value="Login" id="login-button">
+</form>
 <div>
  <table id="table">
 </table>
@@ -49,21 +147,81 @@
 
 const backend_url = "https://6z456hpazwuzluajqn5kka7htu0ltqnf.lambda-url.eu-west-2.on.aws/location";
 
-var options = {
-    headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'content-type': 'application/json',
-        'Cache-Control': 'no-cache',
-        'cache-control': 'no-cache',
-        'Access-Control-Allow-Origin': '*',
-    }
+var data = []
+var password = ""
+
+function setCookie(cname, cvalue, exdays) {
+  const d = new Date();
+  d.setTime(d.getTime() + (exdays*24*60*60*1000));
+  let expires = "expires="+ d.toUTCString();
+  document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
 }
 
-var data = []
+const parseCookie = (str) => str.split(';').map(v => v.split('=')).reduce((acc, v) => {
+  acc[decodeURIComponent(v[0].trim())] = decodeURIComponent(v[1].trim());
+  return acc;
+}, {});
+
+function get_login(parse_cookie){
+    let cookies = {}
+    if (parse_cookie) {
+        try {
+            cookies = parseCookie(document.cookie)
+        } catch (e) {
+            console.log(e)
+        }
+    }
+
+    if ("password" in cookies && cookies.password !== ""){
+        console.log("password found in cookies")
+        password = cookies.password
+        get_data();
+    } else {
+        document.getElementById("table").style.visibility = "hidden";
+        document.getElementById("login-form").style.visibility = "visible";
+    }
+
+}
+
+function get_data(){
+    document.getElementById("loading").style.visibility = "visible";
+    let options = {
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'content-type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'cache-control': 'no-cache',
+            'Access-Control-Allow-Origin': '*',
+            'Password': password
+        }
+    }
+
+    axios.get(backend_url, options)
+    .then(function (result) {
+        console.log("success");
+        console.log(result);
+        displayInTable(result.data);
+    })
+    .catch(function (error) {
+        if (error.response.status === 401){
+            alert("Wrong password");
+            password = "";
+            get_login(false);
+        }else{
+            alert(`Something went wrong ${error.response.status}`);
+        }
+        console.error(error);
+
+    }).finally(function () {
+        document.getElementById("loading").style.visibility = "hidden";
+    });
+}
 
 function displayInTable(data_list) {
-  var new_table = "<thead><th>Locatie</th>" +
+    document.getElementById("table").style.visibility = "visible";
+    document.getElementById("login-form").style.visibility = "hidden";
+    var new_table = "<thead><th>Locatie</th>" +
       "<th>Naam</th>" +
       "<th>Team</th>" +
       "<th>Post</th>" +
@@ -77,29 +235,36 @@ function displayInTable(data_list) {
         if (typeof post === 'undefined' || post === 'null'){
             post = "?"
         }
+        let os = "?"
+        try {
+            os = d.browser_info.split('(')[1].split(')')[0].split(';')[0]
+        } catch (e) {
+            console.log(e)
+        }
         new_table += "<tr>"
         new_table += `<td><a href="${google_maps_url}">${d.lat}; ${d.lon}</a></td>`
         new_table += `<td>${d.name}</td>`
         new_table += `<td>${d.team}</td>`
         new_table += `<td>${post}</td>`
-        new_table += `<td>${d.browser_info}</td>`
-        new_table += `<td>${d.date}</td>`
+        new_table += `<td title="${d.browser_info}" >${os}</td>`
+        new_table += `<td>${d.date.replace("T"," ").split(".")[0]}</td>`
         new_table += "</tr>"
     }
 
-  document.getElementById("table").innerHTML = new_table;
+    document.getElementById("table").innerHTML = new_table;
 }
 
+document.getElementById("table").style.visibility = "hidden";
+document.getElementById("login-form").style.visibility = "hidden";
+document.getElementById("loading").style.visibility = "hidden";
+get_login(true);
+document.getElementById("login-button").addEventListener("click", function (event) {
+    console.log("button clicked")
+    event.preventDefault();
+    setCookie('password', document.getElementById("password_field").value, 3)
+    password = document.getElementById("password_field").value;
+    get_data();
+});
 
-axios.get(backend_url, options)
-    .then(function (result) {
-        console.log("success");
-        console.log(result);
-        displayInTable(result.data);
-    })
-    .catch(function (errorCreate) {
-        console.error(errorCreate);
-        alert("oepsie");
-    });
 </script>
 </html>

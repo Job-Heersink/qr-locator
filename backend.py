@@ -1,15 +1,19 @@
 import base64
 import json
 import os.path
+import time
 from datetime import datetime
 from typing import Optional
 
 import boto3
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from werkzeug.utils import secure_filename
 
 S3_BUCKET = "location-finder-data-bucket"
+very_secret_password = "VerySecretP@ssword69"
 
+os.environ['TZ'] = 'Europe/Amsterdam'
+time.tzset()
 
 class LocationData(BaseModel):
     lat: float
@@ -17,7 +21,7 @@ class LocationData(BaseModel):
     name: str
     team: str
     browser_info: str
-    date: datetime = datetime.now()
+    date: datetime = Field(default_factory=datetime.now)
     qr_id: Optional[str] = None
 
 
@@ -51,6 +55,16 @@ def get_html(file):
             }
         }
 
+def get_css(file):
+    with open(file, 'r') as f:
+        return {
+            "statusCode": 200,
+            "body": f.read(),
+            "headers": {
+                'Content-Type': 'text/css',
+            }
+        }
+
 
 def get_image(file, image_type='png'):
     with open(file, 'rb') as f:
@@ -63,6 +77,7 @@ def get_image(file, image_type='png'):
             }
         }
 
+
 def response_404():
     return {
         "statusCode": 404,
@@ -70,16 +85,26 @@ def response_404():
     }
 
 
+def response_401():
+    return {
+        "statusCode": 401,
+        "body": "Wrong password"
+    }
+
+
 def handler(event, context):
     try:
         method = event['requestContext']['http']['method']
         path = event['requestContext']['http']['path']
+        headers = event['headers']
         print(f"method: {method}, path: {path}")
         if method == 'GET' and path == '/ping':
             return ping()
         elif method == 'POST' and path == '/location':
             return store_location(LocationData.parse_raw(event.get('body')))
         elif method == 'GET' and path == '/location':
+            if headers.get('password') != very_secret_password:
+                return response_401()
             return get_location()
         if method == 'GET' and path == '/':
             return get_html('index.html')
@@ -94,6 +119,8 @@ def handler(event, context):
                 return get_image(path[1:], 'jpg')
             elif path.endswith('.svg'):
                 return get_image(path[1:], 'svg+xml')
+            elif path.endswith('.css'):
+                return get_css(path[1:])
             else:
                 return response_404()
         else:
@@ -120,8 +147,9 @@ def get_location():
     client = boto3.client('s3')
     data = []
     for item in iterate_bucket_items():
-        obj = client.get_object(Bucket=S3_BUCKET, Key=item)
-        data.append(json.loads(obj['Body'].read()))
+        for version in client.list_object_versions(Bucket=S3_BUCKET, Prefix=item)['Versions']:
+            obj = client.get_object(Bucket=S3_BUCKET, Key=item, VersionId=version['VersionId'])
+            data.append(json.loads(obj['Body'].read()))
 
     data.sort(key=lambda x: x['date'], reverse=True)
 
